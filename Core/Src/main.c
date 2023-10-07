@@ -32,7 +32,7 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define BUF_SIZE 200
+#define BUF_SIZE 16
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -46,7 +46,7 @@ UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
 uint8_t isReceived;
-uint16_t receiveLength;
+size_t imReceiveLength;
 uint8_t im_rx_buffer[BUF_SIZE];
 uint8_t usb_tx_buffer[BUF_SIZE];
 /* USER CODE END PV */
@@ -103,6 +103,16 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+	  do{
+		  HAL_UART_Receive_IT(&huart1, im_rx_buffer, 1);
+		  while(isReceived == 0){}
+		  usb_tx_buffer[imReceiveLength] = im_rx_buffer[0];
+		  imReceiveLength++;
+		  isReceived = 0;
+	  }while(im_rx_buffer[0] != '\r' && imReceiveLength <= BUF_SIZE - 1);
+	  usb_tx_buffer[imReceiveLength] = '\n';
+	  CDC_Transmit_FS(usb_tx_buffer, imReceiveLength);
+	  imReceiveLength = 0;
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -267,14 +277,7 @@ static void MX_GPIO_Init(void)
  */
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
-	usb_tx_buffer[receiveLength] = im_rx_buffer[0];
-	receiveLength++;
-	if(im_rx_buffer[0] == '\r' || receiveLength > BUF_SIZE){
-		CDC_Transmit_FS(usb_tx_buffer, receiveLength);
-		//HAL_UART_Transmit_IT(&huart1, usb_tx_buffer, receiveLength);
-		receiveLength = 0;
-	}
-	HAL_UART_Receive_IT(&huart1, im_rx_buffer, 1);
+	isReceived = 1;
 }
 /* USER CODE END 4 */
 

@@ -62,6 +62,7 @@
   */
 
 /* USER CODE BEGIN PRIVATE_DEFINES */
+#define BUF_SIZE 128
 /* USER CODE END PRIVATE_DEFINES */
 
 /**
@@ -94,7 +95,10 @@ uint8_t UserRxBufferFS[APP_RX_DATA_SIZE];
 uint8_t UserTxBufferFS[APP_TX_DATA_SIZE];
 
 /* USER CODE BEGIN PRIVATE_VARIABLES */
-
+size_t usbReceiveLength;
+uint8_t usb_rx_buffer[BUF_SIZE];
+uint8_t im_tx_buffer[BUF_SIZE];
+extern UART_HandleTypeDef huart1;
 /* USER CODE END PRIVATE_VARIABLES */
 
 /**
@@ -261,8 +265,18 @@ static int8_t CDC_Control_FS(uint8_t cmd, uint8_t* pbuf, uint16_t length)
 static int8_t CDC_Receive_FS(uint8_t* Buf, uint32_t *Len)
 {
   /* USER CODE BEGIN 6 */
+  // a function to send data from USB to IM Module
   USBD_CDC_SetRxBuffer(&hUsbDeviceFS, &Buf[0]);
   USBD_CDC_ReceivePacket(&hUsbDeviceFS);
+  for(int i = 0; i < *Len; i++){
+  	  im_tx_buffer[usbReceiveLength + i] = Buf[i];
+  	  usbReceiveLength++;
+  }
+  if(Buf[0] == '\r' || usbReceiveLength > BUF_SIZE - 1){
+	  im_tx_buffer[usbReceiveLength] = '\n';
+	  HAL_UART_Transmit_IT(&huart1, im_tx_buffer, usbReceiveLength);
+	  usbReceiveLength = 0;
+  }
   return (USBD_OK);
   /* USER CODE END 6 */
 }
